@@ -2,7 +2,7 @@ package com.bahasakita.segmentor;
 
  public interface AudioSegmentorHandler {
 
-    public void onUtterance(byte[] audio);
+    public void onUtterance(byte[] audio,int channel);
 
     public void onFinish();
 

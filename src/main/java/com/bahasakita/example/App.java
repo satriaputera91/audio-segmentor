@@ -17,17 +17,17 @@ public class App {
             static final private int SAMPLE_SIZE = 16;
             static final private boolean SIGNED = true;
 
-            private int utterance;
+            private int utterance = 0;
             @Override
-            public void onUtterance(byte[] audio) {
+            public void onUtterance(byte[] audio,int channel) {
                 
                 AudioFormat audioFormat = new AudioFormat(SAMPLE_RATE,
                         SAMPLE_SIZE, MONO, SIGNED, LITTLE_ENDIAN);
                 
-                        String fileName = "utt-"+utterance+".wav";
+                        String fileName = "utt-"+channel+"-"+utterance+".wav";
 
                 try {
-                    AudioSegmentor.save(fileName, AudioFileFormat.Type.WAVE, audioFormat, audio);
+                    AudioProcessing.save(fileName, AudioFileFormat.Type.WAVE, audioFormat, audio);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
@@ -48,8 +48,8 @@ public class App {
 
         };
 
-        AudioSegmentor segmentor = new AudioSegmentor(handler);
-        segmentor.processing("/home/satria/Music/FS_2MIN/FS_001.wav");
+        AudioProcessing audioProcess = new AudioProcessing(handler);
+        audioProcess.processing("stereo.wav");
     }
 
 }
