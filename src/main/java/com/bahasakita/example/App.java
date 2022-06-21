@@ -24,7 +24,7 @@ public class App {
                 AudioFormat audioFormat = new AudioFormat(SAMPLE_RATE,
                         SAMPLE_SIZE, MONO, SIGNED, LITTLE_ENDIAN);
                 
-                        String fileName = "utt-"+channel+"-"+utterance+".wav";
+                        String fileName = "utt-"+utterance+"-"+channel+".wav";
 
                 try {
                     AudioProcessing.save(fileName, AudioFileFormat.Type.WAVE, audioFormat, audio);
@@ -37,11 +37,6 @@ public class App {
             }
 
             @Override
-            public void onFinish() {
-
-            }
-
-            @Override
             public void onTrehsold(double treshold) {
 
             }
@@ -49,7 +44,10 @@ public class App {
         };
 
         AudioProcessing audioProcess = new AudioProcessing(handler);
-        audioProcess.processing("stereo.wav");
+        //audioProcess.processing("mono.wav");   
+        audioProcess.processing("stereo.wav");       
+        //audioProcess.processing("/home/satria/Documents/QMT/TAR-AUG-11-16khz.wav");
+        
     }
 
 }

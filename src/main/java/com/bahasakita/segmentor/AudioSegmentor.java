@@ -27,7 +27,7 @@ public class AudioSegmentor  {
 
     // konstanta Audio Format
 
-    static final private int MAX_BUFFER = 512;
+    static final int MAX_BUFFER = 512;
     
     // Konstanta Segmentation
     final private double T_REF = 5e-3;
@@ -193,7 +193,7 @@ public class AudioSegmentor  {
                 countTraining++;
                 resetDetection();
                 if (countTraining == (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits() / 8) / MAX_BUFFER) * 3)) {
-                    System.out.println("------ Training --------");
+                    //System.out.println("------ Training --------");
                     training(dBVector);
                 }
 
@@ -279,16 +279,16 @@ public class AudioSegmentor  {
                 mic_change_count = 0;
             }
 
-            if (mic_change_state == true) {
+            //if (mic_change_state == true) {
                 // System.out.printf(
                 //         " Monitor : dB : (%.2f/%.2f) \tmu_1: |%.2f <= (%.2f/%.2f) => %.2f| \tmu2:|%.2f <= (%.2f/%.2f)=> %.2f|, isChange:%s, isFirst:%s\n",
                 //         dB, SILENT_TRESHOLD, silent_change_lowlimit, silent_db, mu_1, silent_change_uplimit,
                 //         sound_change_lowlimit, sound_db, mu_2, sound_change_uplimit,
                 //         Boolean.toString(isChange), Boolean.toString(isFirst));
-                System.out.printf(
-                        "(Mic Change Detection)\n");
+                // System.out.printf(
+                //         "(Mic Change Detection)\n");
 
-            } else {
+            //} else {
                 // System.out.printf(
                 //         " Monitor : dB : (%.2f/%.2f) \tmu_1: |%.2f <= (%.2f/%.2f) => %.2f| \tmu2:|%.2f <= (%.2f/%.2f)=> %.2f|, isChange:%s, isFirst:%s\n",
                 //         dB, SILENT_TRESHOLD, silent_change_lowlimit, silent_db, mu_1, silent_change_uplimit,
@@ -296,13 +296,13 @@ public class AudioSegmentor  {
                 //         Boolean.toString(isChange), Boolean.toString(isFirst));
                 // System.out.printf(
                 //         "(Normal State) Detect_No : %d\n", mic_change_count);
-            }
-        } else if (dB > 0) {
+            //}
+        //} else if (dB > 0) {
             // System.out.printf(
             //         " Monitor : dB : (%.2f/%.2f) \tmu_1: (%.2f/%.2f) \tmu2:(%.2f/%.2f), isChange:%s, isFirst:%s\n",
             //         dB, SILENT_TRESHOLD, silent_db, mu_1, sound_db, mu_2,
             //         Boolean.toString(isChange), Boolean.toString(isFirst));
-            System.out.printf("(In Training)\n");
+            //System.out.printf("(In Training)\n");
 
         }
 
@@ -353,6 +353,26 @@ public class AudioSegmentor  {
 
     }
     
+
+    public void stopAudio() {
+
+        if (dBVectorData.size() > 25) {
+            //create utterance last meeting, if 12800 bytes
+            //System.out.println("MASUK");
+            creteUtterance();
+        }
+      
+        this.dBVectorFlag.removeAll(dBVectorFlag);
+        this.dBVector.removeAll(dBVector);
+
+        try {
+            this.baos.close();
+
+        } catch (IOException ex) {
+            Logger.getLogger(AudioSegmentor.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
     public void training(ArrayList<Double> dB_Vector) {
         double temp_mu1 = 0.0;
         double temp_mu2 = 0.0;
@@ -360,11 +380,11 @@ public class AudioSegmentor  {
         // double temp_mu2_2 = 0.0;
 
         if (isFirst || isChange) {
-            System.out.println("First Training");
+            //System.out.println("First Training");
             mu_1 = average(dB_Vector) - 0.5;
             mu_2 = average(dB_Vector) + 0.5;
         } else {
-            System.out.println("Second Training");
+            //System.out.println("Second Training");
         }
         temp_mu1 = mu_1;
         // temp_mu1_1 = mu_1;
@@ -560,8 +580,9 @@ public class AudioSegmentor  {
                                 .getName()).log(Level.SEVERE, null, ex);
                     }
                 }
+               
 
-                if (baos.size() >= 6400) {
+                if (baos.size() >= 6400) {                   
                     this.handler.onUtterance(baos.toByteArray(),this.channel);
                 }
 

@@ -24,7 +24,6 @@ import com.bahasakita.segmentor.AudioSegmentorHandler;
 
 public class AudioProcessing {
 
-    static final private int MAX_BUFFER = 512;
     
     private AudioSegmentorHandler handler;
     private Map<Integer,AudioSegmentor> segmentors;
@@ -69,7 +68,6 @@ public class AudioProcessing {
                     while ( channel_potition < audioInputStream.getFormat(). getChannels()+1){
                       
                         if (! this.segmentors.containsKey(channel_potition)) {
-                            System.out.println("Channels :"+ channel_potition);
                             AudioSegmentor segmentor = new AudioSegmentor(this.handler);
                             segmentor.properties(audioInputStream.getFormat());
                             segmentor.set_channel(channel_potition);
@@ -81,7 +79,7 @@ public class AudioProcessing {
                         if (channel_potition == 1) {
                             leftbaos.write(bytes,0,bytes.length/channels);
                             
-                            if(leftbaos.size() >= MAX_BUFFER) {
+                            if(leftbaos.size() >= AudioSegmentor.MAX_BUFFER) {
 
                                 this.segmentors.get(channel_potition).segmentation(leftbaos.toByteArray());
                                 leftbaos.reset();
@@ -91,7 +89,7 @@ public class AudioProcessing {
                             rightbaos.write(bytes,bytes.length/channels,bytes.length/channels);
 
                             
-                            if(rightbaos.size() >= MAX_BUFFER) {
+                            if(rightbaos.size() >= AudioSegmentor.MAX_BUFFER) {
                                 this.segmentors.get(channel_potition).segmentation(rightbaos.toByteArray());
                                 rightbaos.reset();
                             }
@@ -100,6 +98,13 @@ public class AudioProcessing {
                         channel_potition++;                            
                     }
                 }
+
+                int channel_potition = 1;    
+                while ( channel_potition < audioInputStream.getFormat(). getChannels()+1){                      
+                    this.segmentors.get(channel_potition).stopAudio();
+                    channel_potition++;
+                }
+
                 leftbaos.close();
                 rightbaos.close();
 
