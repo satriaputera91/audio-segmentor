@@ -5,30 +5,23 @@
  */
 package com.bahasakita.segmentor;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Vector;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.sound.sampled.AudioFileFormat;
+
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 
-import javax.sound.sampled.TargetDataLine;
-import javax.sound.sampled.UnsupportedAudioFileException;
-
-public class AudioSegmentor  {
+public class AudioSegmentor {
 
     // konstanta Audio Format
 
     static final int MAX_BUFFER = 512;
-    
+
     // Konstanta Segmentation
     final private double T_REF = 5e-3;
     final private double DB_REF = 5.0;
@@ -55,51 +48,50 @@ public class AudioSegmentor  {
     // private boolean isMute = false;
     private double mu_1 = 10; // initial mean of unvoiced data
     private double mu_2 = 90; // initial mean of voiced data
-    
+
     private double MINIMUM_TRESHOLD = 50;
     private double SILENT_TRESHOLD;
     private boolean isFirst;
     private ArrayList<Double> dBVector;
-   
+
     private ArrayList<Integer> dBVectorFlag;
     private ArrayList<Byte[]> dBVectorData;
     private int countTraining;
     private int countSegmentation;
     private int RUNNING_SILENT = SILENT_PADDING;
-    private static double monitor_silent_sum = 0;
-    private static int monitor_silent_count = 0;
-    private static double silent_stddev = 0;
-    private static double monitor_sound_sum = 0;
-    private static int monitor_sound_count = 0;
-    private static double sound_stddev = 0;
-    private static int mic_change_count = 0;
-    private static boolean mic_change_state = false;
+    private double monitor_silent_sum = 0;
+    private int monitor_silent_count = 0;
+    private double silent_stddev = 0;
+    private double monitor_sound_sum = 0;
+    private int monitor_sound_count = 0;
+    private double sound_stddev = 0;
+    private int mic_change_count = 0;
+    private boolean mic_change_state = false;
     private int population_limit = 125;
     private double sigmaBound = 2.5;
     private int changeBound = 5;
-    private int channel ;
+    private int channel;
     ////////////////////////////////////////////////////////////////////////////////
 
     public AudioSegmentor(AudioSegmentorHandler handler) {
-       this.handler = handler;
+        this.handler = handler;
     }
 
-    
-    public void properties(AudioFormat audioFormat)
-    {
+    public void properties(AudioFormat audioFormat) {
         this.audioFormat = audioFormat;
-        this.CHUNK_TRESHOLD = (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits() / 8)* DURATION;
-    
+        this.CHUNK_TRESHOLD = (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits() / 8)
+                * DURATION;
+
         this.isFirst = true;
         this.baos = new ByteArrayOutputStream();
-      
+
         this.dBVectorFlag = new ArrayList<>();
         this.dBVectorData = new ArrayList<Byte[]>();
         this.dBVector = new ArrayList<Double>();
         this.population_limit = 125;
         this.sigmaBound = 2.5;
         this.changeBound = 5;
-        
+
         this.countTraining = 0;
         this.SILENT_PADDING_COUNTER = 0;
 
@@ -110,19 +102,18 @@ public class AudioSegmentor  {
         this.countTraining = 0;
 
         this.isChange = false;
-                
+
     }
 
-    public void set_channel(int channel)
-    {
-        this.channel = channel; 
+    public void set_channel(int channel) {
+        this.channel = channel;
     }
 
     public void set_training(boolean training) {
 
         this.countTraining = 0;
         this.isFirst = true;
-    }   
+    }
 
     public double powerLevel(byte data[]) {
         double dB;
@@ -192,8 +183,9 @@ public class AudioSegmentor  {
                 dBVector.add(dB);
                 countTraining++;
                 resetDetection();
-                if (countTraining == (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits() / 8) / MAX_BUFFER) * 3)) {
-                    //System.out.println("------ Training --------");
+                if (countTraining == (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
+                        / 8) / MAX_BUFFER) * 3)) {
+                    // System.out.println("------ Training --------");
                     training(dBVector);
                 }
 
@@ -279,30 +271,35 @@ public class AudioSegmentor  {
                 mic_change_count = 0;
             }
 
-            //if (mic_change_state == true) {
-                // System.out.printf(
-                //         " Monitor : dB : (%.2f/%.2f) \tmu_1: |%.2f <= (%.2f/%.2f) => %.2f| \tmu2:|%.2f <= (%.2f/%.2f)=> %.2f|, isChange:%s, isFirst:%s\n",
-                //         dB, SILENT_TRESHOLD, silent_change_lowlimit, silent_db, mu_1, silent_change_uplimit,
-                //         sound_change_lowlimit, sound_db, mu_2, sound_change_uplimit,
-                //         Boolean.toString(isChange), Boolean.toString(isFirst));
-                // System.out.printf(
-                //         "(Mic Change Detection)\n");
-
-            //} else {
-                // System.out.printf(
-                //         " Monitor : dB : (%.2f/%.2f) \tmu_1: |%.2f <= (%.2f/%.2f) => %.2f| \tmu2:|%.2f <= (%.2f/%.2f)=> %.2f|, isChange:%s, isFirst:%s\n",
-                //         dB, SILENT_TRESHOLD, silent_change_lowlimit, silent_db, mu_1, silent_change_uplimit,
-                //         sound_change_lowlimit, sound_db, mu_2, sound_change_uplimit,
-                //         Boolean.toString(isChange), Boolean.toString(isFirst));
-                // System.out.printf(
-                //         "(Normal State) Detect_No : %d\n", mic_change_count);
-            //}
-        //} else if (dB > 0) {
+            // if (mic_change_state == true) {
             // System.out.printf(
-            //         " Monitor : dB : (%.2f/%.2f) \tmu_1: (%.2f/%.2f) \tmu2:(%.2f/%.2f), isChange:%s, isFirst:%s\n",
-            //         dB, SILENT_TRESHOLD, silent_db, mu_1, sound_db, mu_2,
-            //         Boolean.toString(isChange), Boolean.toString(isFirst));
-            //System.out.printf("(In Training)\n");
+            // " Monitor : dB : (%.2f/%.2f) \tmu_1: |%.2f <= (%.2f/%.2f) => %.2f|
+            // \tmu2:|%.2f <= (%.2f/%.2f)=> %.2f|, isChange:%s, isFirst:%s\n",
+            // dB, SILENT_TRESHOLD, silent_change_lowlimit, silent_db, mu_1,
+            // silent_change_uplimit,
+            // sound_change_lowlimit, sound_db, mu_2, sound_change_uplimit,
+            // Boolean.toString(isChange), Boolean.toString(isFirst));
+            // System.out.printf(
+            // "(Mic Change Detection)\n");
+
+            // } else {
+            // System.out.printf(
+            // " Monitor : dB : (%.2f/%.2f) \tmu_1: |%.2f <= (%.2f/%.2f) => %.2f|
+            // \tmu2:|%.2f <= (%.2f/%.2f)=> %.2f|, isChange:%s, isFirst:%s\n",
+            // dB, SILENT_TRESHOLD, silent_change_lowlimit, silent_db, mu_1,
+            // silent_change_uplimit,
+            // sound_change_lowlimit, sound_db, mu_2, sound_change_uplimit,
+            // Boolean.toString(isChange), Boolean.toString(isFirst));
+            // System.out.printf(
+            // "(Normal State) Detect_No : %d\n", mic_change_count);
+            // }
+            // } else if (dB > 0) {
+            // System.out.printf(
+            // " Monitor : dB : (%.2f/%.2f) \tmu_1: (%.2f/%.2f) \tmu2:(%.2f/%.2f),
+            // isChange:%s, isFirst:%s\n",
+            // dB, SILENT_TRESHOLD, silent_db, mu_1, sound_db, mu_2,
+            // Boolean.toString(isChange), Boolean.toString(isFirst));
+            // System.out.printf("(In Training)\n");
 
         }
 
@@ -322,7 +319,7 @@ public class AudioSegmentor  {
             SILENT_PADDING_COUNTER = 0;
             ACTIVE_SILENT_COUNTER = false;
             SILENT_COUNTER = 0;
-            //System.out.println("(Bicara...)");
+            // System.out.println("(Bicara...)");
             dBVectorFlag.add(1);
             dBVectorData.add(toObjects(data));
         } else if (dB <= SILENT_TRESHOLD) {
@@ -330,13 +327,13 @@ public class AudioSegmentor  {
             // suara diam
             SILENT_PADDING_COUNTER++;
             if (SILENT_PADDING_COUNTER <= SILENT_PADDING) {
-                //System.out.println("(Diam padding :" + SILENT_PADDING_COUNTER + ")");
+                // System.out.println("(Diam padding :" + SILENT_PADDING_COUNTER + ")");
                 ACTIVE_SILENT_COUNTER = true;
                 dBVectorFlag.add(0);
                 dBVectorData.add(toObjects(data));
             } else if (ACTIVE_SILENT_COUNTER) {
                 // System.out.println(
-                //         "(Active Silent :" + dB + ", S_COUNTER :" + SILENT_COUNTER + ")");
+                // "(Active Silent :" + dB + ", S_COUNTER :" + SILENT_COUNTER + ")");
                 SILENT_COUNTER++;
             }
 
@@ -345,23 +342,23 @@ public class AudioSegmentor  {
         // pemotongan suara menjadi utterance, berdasarkan jeda ucapan.
         // atau kondisi diam selama 1.5 detik
         if (dBVectorData.size() * MAX_BUFFER >= CHUNK_TRESHOLD
-                || ((SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits() / 8) / MAX_BUFFER) * 1.5)
+                || ((SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
+                        / 8) / MAX_BUFFER) * 1.5)
                         && (dBVectorData.size() * MAX_BUFFER > 8400)))) {
             // if voice silent 1.5 second or length audio more than 10 second
             creteUtterance();
         }
 
     }
-    
 
     public void stopAudio() {
 
         if (dBVectorData.size() > 25) {
-            //create utterance last meeting, if 12800 bytes
-            //System.out.println("MASUK");
+            // create utterance last meeting, if 12800 bytes
+            // System.out.println("MASUK");
             creteUtterance();
         }
-      
+
         this.dBVectorFlag.removeAll(dBVectorFlag);
         this.dBVector.removeAll(dBVector);
 
@@ -380,11 +377,11 @@ public class AudioSegmentor  {
         // double temp_mu2_2 = 0.0;
 
         if (isFirst || isChange) {
-            //System.out.println("First Training");
+            // System.out.println("First Training");
             mu_1 = average(dB_Vector) - 0.5;
             mu_2 = average(dB_Vector) + 0.5;
         } else {
-            //System.out.println("Second Training");
+            // System.out.println("Second Training");
         }
         temp_mu1 = mu_1;
         // temp_mu1_1 = mu_1;
@@ -470,7 +467,8 @@ public class AudioSegmentor  {
             sound_stddev = Math.sqrt(sound_stddev);
         }
 
-        //System.out.printf("std_dev : silent/sound  %f/%f mu_1/mu_2 %f/%f \n", silent_stddev, sound_stddev, mu_1, mu_2);
+        // System.out.printf("std_dev : silent/sound %f/%f mu_1/mu_2 %f/%f \n",
+        // silent_stddev, sound_stddev, mu_1, mu_2);
 
         SILENT_TRESHOLD = mu_1 + (KONSTANTA_TRESHOLD * distance(mu_1, mu_2));
         if ((isFirst || isChange) && SILENT_TRESHOLD < MINIMUM_TRESHOLD) {
@@ -482,7 +480,7 @@ public class AudioSegmentor  {
         }
 
         // System.out.println(
-        //         "SILENT_TRESHOLD:" + SILENT_TRESHOLD);
+        // "SILENT_TRESHOLD:" + SILENT_TRESHOLD);
 
         this.handler.onTrehsold(SILENT_TRESHOLD);
         dBVector.clear();
@@ -545,7 +543,7 @@ public class AudioSegmentor  {
         ArrayList<Integer> silentDuration = new ArrayList<>();
         ArrayList<Integer> silentIndex = new ArrayList<>();
 
-        //System.out.println("prepare create utterance...");
+        // System.out.println("prepare create utterance...");
         for (int i = 0; i < dBVectorFlag.size(); i++) {
             // System.out.print(dBVectorFlag.get(i));
             if (dBVectorFlag.get(i) == 0) {
@@ -580,16 +578,16 @@ public class AudioSegmentor  {
                                 .getName()).log(Level.SEVERE, null, ex);
                     }
                 }
-               
 
-                if (baos.size() >= 6400) {                   
-                    this.handler.onUtterance(baos.toByteArray(),this.channel);
+                if (baos.size() >= 6400) {
+                    this.handler.onUtterance(baos.toByteArray(), this.channel);
                 }
 
                 baos.reset();
                 RUNNING_SILENT = SILENT_PADDING;
                 countSegmentation = 0;
-                if (SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits() / 8) ) * 1.5)) {
+                if (SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
+                        / 8)) * 1.5)) {
                     ACTIVE_SILENT_COUNTER = false;
                     SILENT_COUNTER = 0;
                 }
@@ -601,7 +599,8 @@ public class AudioSegmentor  {
             RUNNING_SILENT--;
         } else if (!isChange) {
             countSegmentation++;
-            if (countSegmentation == ( ((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits() / 8)) * 3)) {
+            if (countSegmentation == (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
+                    / 8)) * 3)) {
 
                 isChange = true;
                 countSegmentation = 0;

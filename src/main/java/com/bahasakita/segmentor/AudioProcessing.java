@@ -24,36 +24,35 @@ import com.bahasakita.segmentor.AudioSegmentorHandler;
 
 public class AudioProcessing {
 
-    
     private AudioSegmentorHandler handler;
-    private Map<Integer,AudioSegmentor> segmentors;
-    public AudioProcessing(AudioSegmentorHandler handler) {
-   
+    private Map<Integer, AudioSegmentor> segmentors;
 
-        this.handler = handler ;
-        this.segmentors = new HashMap<Integer,AudioSegmentor>();
+    public AudioProcessing(AudioSegmentorHandler handler) {
+
+        this.handler = handler;
+        this.segmentors = new HashMap<Integer, AudioSegmentor>();
 
     }
 
     public void processing(String filename) {
-     
+
         try {
             // System.out.println("filename :" + filename);
             AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File(filename));
             int bytesPerFrame = audioInputStream.getFormat().getFrameSize();
-            
+
             if (bytesPerFrame == AudioSystem.NOT_SPECIFIED) {
                 // some audio formats may have unspecified frame size
                 // in that case we may read any amount of bytes
                 bytesPerFrame = 1;
             }
 
-            
             System.out.println(audioInputStream.getFormat().toString());
 
             float sampleRate = audioInputStream.getFormat().getSampleRate();
-            byte[] bytes = new byte[(audioInputStream.getFormat().getSampleSizeInBits()/8)*2];
-            int channels = audioInputStream.getFormat(). getChannels();
+            byte[] bytes = new byte[(audioInputStream.getFormat().getSampleSizeInBits() / 8) * 2];
+            int channels = audioInputStream.getFormat().getChannels();
+            this.handler.onStart();
 
             if (sampleRate == 16000.0f && bytesPerFrame >= 2 && bytesPerFrame <= 4) {
 
@@ -61,59 +60,75 @@ public class AudioProcessing {
                 ByteArrayOutputStream rightbaos = new ByteArrayOutputStream();
 
                 while (audioInputStream.read(bytes) != -1) {
-                
-                                        
-                    int channel_potition = 1;    
-                  
-                    while ( channel_potition < audioInputStream.getFormat(). getChannels()+1){
-                      
-                        if (! this.segmentors.containsKey(channel_potition)) {
+
+                    int channel_potition = 1;
+
+                    while (channel_potition < audioInputStream.getFormat().getChannels() + 1) {
+
+                        if (!this.segmentors.containsKey(channel_potition)) {
                             AudioSegmentor segmentor = new AudioSegmentor(this.handler);
                             segmentor.properties(audioInputStream.getFormat());
                             segmentor.set_channel(channel_potition);
 
-                            this.segmentors.put(channel_potition,segmentor);
-                            
+                            this.segmentors.put(channel_potition, segmentor);
+
                         }
-                                    
+
                         if (channel_potition == 1) {
-                            leftbaos.write(bytes,0,bytes.length/channels);
-                            
-                            if(leftbaos.size() >= AudioSegmentor.MAX_BUFFER) {
+                            leftbaos.write(bytes, 0, bytes.length / channels);
+
+                            if (leftbaos.size() >= AudioSegmentor.MAX_BUFFER) {
 
                                 this.segmentors.get(channel_potition).segmentation(leftbaos.toByteArray());
                                 leftbaos.reset();
                             }
-                        }
-                        else if (channel_potition == 2 ) {
-                            rightbaos.write(bytes,bytes.length/channels,bytes.length/channels);
+                        } else if (channel_potition == 2) {
+                            rightbaos.write(bytes, bytes.length / channels, bytes.length / channels);
 
-                            
-                            if(rightbaos.size() >= AudioSegmentor.MAX_BUFFER) {
+                            if (rightbaos.size() >= AudioSegmentor.MAX_BUFFER) {
                                 this.segmentors.get(channel_potition).segmentation(rightbaos.toByteArray());
                                 rightbaos.reset();
                             }
-                            
-                        }  
-                        channel_potition++;                            
+
+                        }
+                        channel_potition++;
                     }
                 }
 
-                int channel_potition = 1;    
-                while ( channel_potition < audioInputStream.getFormat(). getChannels()+1){                      
-                    this.segmentors.get(channel_potition).stopAudio();
+                int channel_potition = 1;
+                while (channel_potition < audioInputStream.getFormat().getChannels() + 1) {
+
+                    if (channel_potition == 1) {
+                        if (leftbaos.size() > 0) {
+                            this.segmentors.get(channel_potition).segmentation(leftbaos.toByteArray());
+                            leftbaos.reset();
+                        }
+                        this.segmentors.get(channel_potition).stopAudio();
+                        
+
+                    } else if (channel_potition == 2) {
+
+                        if (rightbaos.size() >= 0) {
+                            this.segmentors.get(channel_potition).segmentation(rightbaos.toByteArray());
+                            rightbaos.reset();
+                        }
+                        this.segmentors.get(channel_potition).stopAudio();
+
+                    }
+
                     channel_potition++;
                 }
 
                 leftbaos.close();
                 rightbaos.close();
-
+                this.handler.onFinish();
+                
             } else {
                 System.out.println("format file not compatible!!!");
 
             }
-
             audioInputStream.close();
+            this.segmentors.clear();
         } catch (UnsupportedAudioFileException ex) {
             Logger.getLogger(AudioSegmentor.class
                     .getName()).log(Level.SEVERE, null, ex);

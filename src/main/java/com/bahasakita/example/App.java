@@ -1,6 +1,8 @@
 package com.bahasakita.example;
 
 import java.io.IOException;
+import java.util.UUID;
+
 import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 
@@ -16,15 +18,22 @@ public class App {
             static final private float SAMPLE_RATE = 16000.0f;
             static final private int SAMPLE_SIZE = 16;
             static final private boolean SIGNED = true;
+            private String uuid;
+            private int utterance;
 
-            private int utterance = 0;
             @Override
-            public void onUtterance(byte[] audio,int channel) {
-                
+            public void onStart() {
+                utterance = 0;
+                uuid = UUID.randomUUID().toString();
+            }
+
+            @Override
+            public void onUtterance(byte[] audio, int channel) {
+
                 AudioFormat audioFormat = new AudioFormat(SAMPLE_RATE,
                         SAMPLE_SIZE, MONO, SIGNED, LITTLE_ENDIAN);
-                
-                        String fileName = "utt-"+utterance+"-"+channel+".wav";
+
+                String fileName = uuid + "-" + utterance + "-" + channel + ".wav";
 
                 try {
                     AudioProcessing.save(fileName, AudioFileFormat.Type.WAVE, audioFormat, audio);
@@ -41,13 +50,19 @@ public class App {
 
             }
 
+            @Override
+            public void onFinish() {
+                utterance = 0;
+
+            }
+
         };
 
         AudioProcessing audioProcess = new AudioProcessing(handler);
-        //audioProcess.processing("mono.wav");   
-        audioProcess.processing("stereo.wav");       
-        //audioProcess.processing("/home/satria/Documents/QMT/TAR-AUG-11-16khz.wav");
-        
+        audioProcess.processing("mono.wav");
+        audioProcess.processing("stereo.wav");
+        // audioProcess.processing("/home/satria/Documents/QMT/TAR-AUG-11-16khz.wav");
+
     }
 
 }
