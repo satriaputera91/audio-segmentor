@@ -71,6 +71,10 @@ public class AudioSegmentor {
     private double sigmaBound = 2.5;
     private int changeBound = 5;
     private int channel;
+    private float startTime = 0;
+    private int lengthStop = 0;
+    private int iteratData = 0;
+
     ////////////////////////////////////////////////////////////////////////////////
 
     public AudioSegmentor(AudioSegmentorHandler handler) {
@@ -202,7 +206,6 @@ public class AudioSegmentor {
              */
 
         }
-
         /*
          * if (isFirst || isChange) {
          * resetDetection();
@@ -249,6 +252,8 @@ public class AudioSegmentor {
             // apakah terjadi perubahan volume suara atu tidak
             if (Double.isNaN(silent_db) || Double.isNaN(sound_db)) {
                 mic_change_count = 0;
+                // System.out.println("masuk sini");
+
             } else if (silent_change_lowlimit > silent_db
                     || silent_change_uplimit < silent_db
                     || sound_change_lowlimit > sound_db
@@ -256,10 +261,11 @@ public class AudioSegmentor {
 
                 // terdeteksi terjadi perubahan suara
                 mic_change_count++;
-                if (dB > 0) {
-                    dBVectorFlag.add(1);
-                    dBVectorData.add(toObjects(data));
-                }
+                // if (dB > 0) {
+                // System.out.println("Masuk");
+                // dBVectorFlag.add(1);
+                // dBVectorData.add(toObjects(data));
+                // }
                 if (mic_change_count > changeBound
                         && mic_change_state == false) {
                     // ada perubahan suara
@@ -309,8 +315,13 @@ public class AudioSegmentor {
 
             // perubahan volume suara
             // resetDetection();
+               
             isChange = true;
             mic_change_state = false;
+            dBVectorFlag.add(1);
+            dBVectorData.add(toObjects(data));
+
+            System.out.println("mic change state");
 
         } else if (dB > SILENT_TRESHOLD || (isChange && dB > MINIMUM_TRESHOLD)) {
             // else if (dB > SILENT_TRESHOLD || (isTraining && dB > 0 && !isFirst)) {
@@ -332,11 +343,17 @@ public class AudioSegmentor {
                 dBVectorFlag.add(0);
                 dBVectorData.add(toObjects(data));
             } else if (ACTIVE_SILENT_COUNTER) {
+               
+                dBVectorFlag.add(0);
+                dBVectorData.add(toObjects(data));
+
                 // System.out.println(
                 // "(Active Silent :" + dB + ", S_COUNTER :" + SILENT_COUNTER + ")");
                 SILENT_COUNTER++;
             }
 
+        } else {
+            System.out.println("data hilang");
         }
 
         // pemotongan suara menjadi utterance, berdasarkan jeda ucapan.
@@ -356,7 +373,7 @@ public class AudioSegmentor {
         if (dBVectorData.size() > 25) {
             // create utterance last meeting, if 12800 bytes
             // System.out.println("MASUK");
-            creteUtterance();
+            creteLastUtterance();
         }
 
         this.dBVectorFlag.removeAll(dBVectorFlag);
@@ -539,6 +556,7 @@ public class AudioSegmentor {
     }
 
     public void creteUtterance() {
+
         int n = 0;
         ArrayList<Integer> silentDuration = new ArrayList<>();
         ArrayList<Integer> silentIndex = new ArrayList<>();
@@ -567,11 +585,25 @@ public class AudioSegmentor {
         for (int i = silentDuration.size() - 1; i >= 0; i--) {
 
             if (silentDuration.get(i) >= RUNNING_SILENT || isPause) {
-
+                // System.out.println ("Size before utterance :"+dBVectorFlag.size());
+                lengthStop = 0;
+                startTime = iteratData;
                 for (int j = 0; j < (silentIndex.get(i) - Math.floor(silentDuration.get(i) / 2)); j++) {
                     dBVectorFlag.remove(0); // 6 //8 //10
+                    iteratData += 1;
+
                     try {
-                        baos.write(toPrimitives(dBVectorData.remove(0)));
+
+                        byte[] data = toPrimitives(dBVectorData.remove(0));
+                        // System.out.println("Proses :" + data.length);
+
+                        if (data.length > 0) {
+                            baos.write(data);
+                            lengthStop += 1;
+                        } else {
+                            System.out.println("zero data, size :" + data.length);
+                        }
+                        // System.out.println ("masuk :"+baos.size());
 
                     } catch (IOException ex) {
                         Logger.getLogger(AudioSegmentor.class
@@ -579,8 +611,22 @@ public class AudioSegmentor {
                     }
                 }
 
+                // System.out.println ("Size after utterance :"+dBVectorFlag.size());
+
                 if (baos.size() >= 6400) {
-                    this.handler.onUtterance(baos.toByteArray(), this.channel);
+
+                    // System.out.println ("Silent duration akhir
+                    // :"+silentDuration.get(silentDuration.size()-1));
+                    startTime = (startTime * 512) / (float) (32000.00);
+                    float lengthinSec = (float) (baos.size() / 32000.00);
+                    // System.out.println("IteratData :" + iteratData);
+                    // System.out.println("Stop :" + lengthStop);
+                    // System.out.println("Baos Size :" + baos.size());
+                    // System.out.println("Stop Length in Sec :" + lengthinSec);
+
+                    this.handler.onUtterance(baos.toByteArray(), this.channel, startTime, lengthinSec);
+                 
+
                 }
 
                 baos.reset();
@@ -607,4 +653,44 @@ public class AudioSegmentor {
             }
         }
     }
+
+    public void creteLastUtterance() {
+        
+        startTime=iteratData;
+        
+        while (dBVectorData.size() > 0) {
+            dBVectorFlag.remove(0); // 6 //8 //10
+            iteratData += 1;
+
+            try {
+
+                byte[] data = toPrimitives(dBVectorData.remove(0));
+
+                if (data.length > 0) {
+                    baos.write(data);
+                }
+
+                // System.out.println ("masuk :"+baos.size());
+
+            } catch (IOException ex) {
+                Logger.getLogger(AudioSegmentor.class
+                        .getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+
+        if (baos.size() >= 6400) {
+
+            startTime = (startTime * 512) / (float) (32000.00);                   
+            float lengthinSec = (float) (baos.size() / 32000.00);
+
+            // System.out.println("Stop :" + lengthStop);
+            // System.out.println("Baos Size :" + baos.size());
+            // System.out.println("Last IteratData :" + iteratData);
+
+            this.handler.onUtterance(baos.toByteArray(), this.channel, startTime, lengthinSec);
+            
+        }
+        baos.reset();
+    }
+
 }

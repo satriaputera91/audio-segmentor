@@ -4,7 +4,7 @@ package com.bahasakita.segmentor;
 
     public void onStart();
     
-    public void onUtterance(byte[] audio,int channel);
+    public void onUtterance(byte[] audio,int channel,float startTime,float length);
     
     public void onFinish();
 

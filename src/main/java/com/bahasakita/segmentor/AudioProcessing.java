@@ -50,15 +50,15 @@ public class AudioProcessing {
             System.out.println(audioInputStream.getFormat().toString());
 
             float sampleRate = audioInputStream.getFormat().getSampleRate();
-            byte[] bytes = new byte[(audioInputStream.getFormat().getSampleSizeInBits() / 8) * 2];
-            int channels = audioInputStream.getFormat().getChannels();
+            int channels = audioInputStream.getFormat().getChannels();            
+            byte[] bytes = new byte[(audioInputStream.getFormat().getSampleSizeInBits() / 8) * channels];
             this.handler.onStart();
 
             if (sampleRate == 16000.0f && bytesPerFrame >= 2 && bytesPerFrame <= 4) {
 
                 ByteArrayOutputStream leftbaos = new ByteArrayOutputStream();
                 ByteArrayOutputStream rightbaos = new ByteArrayOutputStream();
-
+                //System.out.println("size : "+bytes.length);
                 while (audioInputStream.read(bytes) != -1) {
 
                     int channel_potition = 1;

@@ -10,9 +10,10 @@ import com.bahasakita.segmentor.*;
 
 public class App {
     public static void main(String[] args) {
+     
 
         AudioSegmentorHandler handler = new AudioSegmentorHandler() {
-
+            static final private String folderAudio = "audio/";
             static final private boolean LITTLE_ENDIAN = false;
             static final private int MONO = 1;
             static final private float SAMPLE_RATE = 16000.0f;
@@ -28,14 +29,15 @@ public class App {
             }
 
             @Override
-            public void onUtterance(byte[] audio, int channel) {
+            public void onUtterance(byte[] audio, int channel,float startTime,float length) {
 
                 AudioFormat audioFormat = new AudioFormat(SAMPLE_RATE,
                         SAMPLE_SIZE, MONO, SIGNED, LITTLE_ENDIAN);
 
-                String fileName = uuid + "-" + utterance + "-" + channel + ".wav";
+                String fileName = folderAudio+ uuid + "-" + utterance + "-" + channel + ".wav";
 
                 try {
+                    System.out.println("Filename :"+fileName+", StartTime :"+startTime+",<==> Length : "+length);
                     AudioProcessing.save(fileName, AudioFileFormat.Type.WAVE, audioFormat, audio);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
@@ -59,8 +61,9 @@ public class App {
         };
 
         AudioProcessing audioProcess = new AudioProcessing(handler);
-        audioProcess.processing("mono.wav");
-        audioProcess.processing("stereo.wav");
+        audioProcess.processing("silent.wav");
+        //audioProcess.processing("bca.wav");
+        //audioProcess.processing("stereo.wav");
         // audioProcess.processing("/home/satria/Documents/QMT/TAR-AUG-11-16khz.wav");
 
     }
