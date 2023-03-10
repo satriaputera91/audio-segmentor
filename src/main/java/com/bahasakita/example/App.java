@@ -61,8 +61,8 @@ public class App {
         };
 
         AudioProcessing audioProcess = new AudioProcessing(handler);
-        audioProcess.processing("silent.wav");
-        //audioProcess.processing("bca.wav");
+        //audioProcess.processing("silent.wav");
+        audioProcess.processing("bca.wav");
         //audioProcess.processing("stereo.wav");
         // audioProcess.processing("/home/satria/Documents/QMT/TAR-AUG-11-16khz.wav");
 

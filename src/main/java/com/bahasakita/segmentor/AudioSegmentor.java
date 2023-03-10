@@ -315,7 +315,7 @@ public class AudioSegmentor {
 
             // perubahan volume suara
             // resetDetection();
-               
+
             isChange = true;
             mic_change_state = false;
             dBVectorFlag.add(1);
@@ -343,8 +343,8 @@ public class AudioSegmentor {
                 dBVectorFlag.add(0);
                 dBVectorData.add(toObjects(data));
             } else if (ACTIVE_SILENT_COUNTER) {
-               
-                dBVectorFlag.add(0);
+
+                dBVectorFlag.add(2);
                 dBVectorData.add(toObjects(data));
 
                 // System.out.println(
@@ -361,9 +361,20 @@ public class AudioSegmentor {
         if (dBVectorData.size() * MAX_BUFFER >= CHUNK_TRESHOLD
                 || ((SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
                         / 8) / MAX_BUFFER) * 1.5)
-                        && (dBVectorData.size() * MAX_BUFFER > 8400)))) {
-            // if voice silent 1.5 second or length audio more than 10 second
+                        && (dBVectorData.size() * MAX_BUFFER > 42000)))) {
+
+            if ((SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
+                    / 8) / MAX_BUFFER) * 1.5)
+                    && (dBVectorData.size() * MAX_BUFFER > 42000))) {
+                System.out.println("data diam");
+            } else {
+                // System.out.println("max buffer "+ dBVectorData.size());
+
+            }
+            // if voice silent 1.5 second and max audio 5 sec or length audio more than
+            // second
             creteUtterance();
+
         }
 
     }
@@ -586,58 +597,64 @@ public class AudioSegmentor {
 
             if (silentDuration.get(i) >= RUNNING_SILENT || isPause) {
                 // System.out.println ("Size before utterance :"+dBVectorFlag.size());
-                lengthStop = 0;
-                startTime = iteratData;
-                for (int j = 0; j < (silentIndex.get(i) - Math.floor(silentDuration.get(i) / 2)); j++) {
-                    dBVectorFlag.remove(0); // 6 //8 //10
-                    iteratData += 1;
 
-                    try {
+                // cek apakah panjang audio lebih dari 5 detik
+                //System.out.println("Panjang cek :"+(silentIndex.get(i) - Math.floor(silentDuration.get(i) / 2))*MAX_BUFFER);
+                if ((silentIndex.get(i) - Math.floor(silentDuration.get(i) / 2)) * MAX_BUFFER >= 160000) {
 
-                        byte[] data = toPrimitives(dBVectorData.remove(0));
-                        // System.out.println("Proses :" + data.length);
+                    lengthStop = 0;
+                    startTime = iteratData;
+                    for (int j = 0; j < (silentIndex.get(i) - Math.floor(silentDuration.get(i) / 2)); j++) {
+                        dBVectorFlag.remove(0); // 6 //8 //10
+                        iteratData += 1;
 
-                        if (data.length > 0) {
-                            baos.write(data);
-                            lengthStop += 1;
-                        } else {
-                            System.out.println("zero data, size :" + data.length);
+                        try {
+
+                            byte[] data = toPrimitives(dBVectorData.remove(0));
+                            // System.out.println("Proses :" + data.length);
+
+                            if (data.length > 0) {
+                                baos.write(data);
+                                lengthStop += 1;
+                            } else {
+                                System.out.println("zero data, size :" + data.length);
+                            }
+                            // System.out.println ("masuk :"+baos.size());
+
+                        } catch (IOException ex) {
+                            Logger.getLogger(AudioSegmentor.class
+                                    .getName()).log(Level.SEVERE, null, ex);
                         }
-                        // System.out.println ("masuk :"+baos.size());
-
-                    } catch (IOException ex) {
-                        Logger.getLogger(AudioSegmentor.class
-                                .getName()).log(Level.SEVERE, null, ex);
                     }
+
+                    // System.out.println ("Size after utterance :"+dBVectorFlag.size());
+
+                    if (baos.size() >= 6400) {
+
+                        // System.out.println ("Silent duration akhir
+                        // :"+silentDuration.get(silentDuration.size()-1));
+                        startTime = (startTime * 512) / (float) (32000.00);
+                        float lengthinSec = (float) (baos.size() / 32000.00);
+                        // System.out.println("IteratData :" + iteratData);
+                        // System.out.println("Stop :" + lengthStop);
+                        // System.out.println("Baos Size :" + baos.size());
+                        // System.out.println("Stop Length in Sec :" + lengthinSec);
+
+                        this.handler.onUtterance(baos.toByteArray(), this.channel, startTime, lengthinSec);
+
+                    }
+
+                    baos.reset();
+                    RUNNING_SILENT = SILENT_PADDING;
+                    countSegmentation = 0;
+                    if (SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate()
+                            * this.audioFormat.getSampleSizeInBits()
+                            / 8)) * 1.5)) {
+                        ACTIVE_SILENT_COUNTER = false;
+                        SILENT_COUNTER = 0;
+                    }
+                    break;
                 }
-
-                // System.out.println ("Size after utterance :"+dBVectorFlag.size());
-
-                if (baos.size() >= 6400) {
-
-                    // System.out.println ("Silent duration akhir
-                    // :"+silentDuration.get(silentDuration.size()-1));
-                    startTime = (startTime * 512) / (float) (32000.00);
-                    float lengthinSec = (float) (baos.size() / 32000.00);
-                    // System.out.println("IteratData :" + iteratData);
-                    // System.out.println("Stop :" + lengthStop);
-                    // System.out.println("Baos Size :" + baos.size());
-                    // System.out.println("Stop Length in Sec :" + lengthinSec);
-
-                    this.handler.onUtterance(baos.toByteArray(), this.channel, startTime, lengthinSec);
-                 
-
-                }
-
-                baos.reset();
-                RUNNING_SILENT = SILENT_PADDING;
-                countSegmentation = 0;
-                if (SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
-                        / 8)) * 1.5)) {
-                    ACTIVE_SILENT_COUNTER = false;
-                    SILENT_COUNTER = 0;
-                }
-                break;
             }
         }
 
@@ -655,9 +672,9 @@ public class AudioSegmentor {
     }
 
     public void creteLastUtterance() {
-        
-        startTime=iteratData;
-        
+
+        startTime = iteratData;
+
         while (dBVectorData.size() > 0) {
             dBVectorFlag.remove(0); // 6 //8 //10
             iteratData += 1;
@@ -680,7 +697,7 @@ public class AudioSegmentor {
 
         if (baos.size() >= 6400) {
 
-            startTime = (startTime * 512) / (float) (32000.00);                   
+            startTime = (startTime * 512) / (float) (32000.00);
             float lengthinSec = (float) (baos.size() / 32000.00);
 
             // System.out.println("Stop :" + lengthStop);
@@ -688,7 +705,7 @@ public class AudioSegmentor {
             // System.out.println("Last IteratData :" + iteratData);
 
             this.handler.onUtterance(baos.toByteArray(), this.channel, startTime, lengthinSec);
-            
+
         }
         baos.reset();
     }
