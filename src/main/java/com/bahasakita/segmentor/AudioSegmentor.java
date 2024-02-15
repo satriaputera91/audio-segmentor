@@ -27,12 +27,12 @@ public class AudioSegmentor {
     final private double DB_REF = 5.0;
     final private int SILENT_PADDING = 40; // leght of padding
     final private int MAX_ITER = 20; // number of iterator for training
-    final private float DURATION = 10.0f;
-
+    
     private int STOP_RUNNING_SILENT = 16;
     // private float KONSTANTA_TRESHOLD = 0.71f;
     private float KONSTANTA_TRESHOLD = 0.32f;
     private float CHUNK_TRESHOLD;
+    private float MAX_CHUNK_TRESHOLD;
 
     // Member Data Audio Segmentor
     private int SILENT_PADDING_COUNTER; // leght of padding counter
@@ -84,8 +84,9 @@ public class AudioSegmentor {
     public void properties(AudioFormat audioFormat) {
         this.audioFormat = audioFormat;
         this.CHUNK_TRESHOLD = (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits() / 8)
-                * DURATION;
-
+                * 10.0f; // Chunk Treshold durasi 10 detik
+        this.MAX_CHUNK_TRESHOLD = (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits() / 8)
+                * 25.0f; // Chunk MAX Treshold durasi 25 detik                
         this.isFirst = true;
         this.baos = new ByteArrayOutputStream();
 
@@ -356,26 +357,32 @@ public class AudioSegmentor {
             System.out.println("data hilang");
         }
 
-        // pemotongan suara menjadi utterance, berdasarkan jeda ucapan.
-        // atau kondisi diam selama 1.5 detik
-        if (dBVectorData.size() * MAX_BUFFER >= CHUNK_TRESHOLD
-                || ((SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
-                        / 8) / MAX_BUFFER) * 1.5)
-                        && (dBVectorData.size() * MAX_BUFFER > 42000)))) {
-
-            if ((SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
-                    / 8) / MAX_BUFFER) * 1.5)
-                    && (dBVectorData.size() * MAX_BUFFER > 42000))) {
-                System.out.println("data diam");
-            } else {
-                // System.out.println("max buffer "+ dBVectorData.size());
-
-            }
-            // if voice silent 1.5 second and max audio 5 sec or length audio more than
-            // second
-            creteUtterance();
-
+        // paksa potong menjadi utterance, 
+        // Jika sama atau melebihi maksimal utterance yang bisa dibuat (MAX_CHUNK_TRESHOLD)       
+        if (dBVectorData.size() * MAX_BUFFER >= MAX_CHUNK_TRESHOLD) {
+            creteLastUtterance();   
         }
+        // lakukan pemotongan suara menjadi utterance, 
+        // Jika panjang ucapan terdeteksi sudah mencapai utterance yang dimungkinkan (CHUNK_TRESHOLD).
+        // atau terjadi kondisi diam selama 0.5 detik        
+        else if (dBVectorData.size() * MAX_BUFFER >= CHUNK_TRESHOLD
+                || ((SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
+                        / 8) / MAX_BUFFER) * 0.5)
+                        && (dBVectorData.size() * MAX_BUFFER > 42000)))) {
+            
+            // running untuk debug 
+            // if ((SILENT_COUNTER > (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
+            //         / 8) / MAX_BUFFER) * 0.5)
+            //         && (dBVectorData.size() * MAX_BUFFER > 42000))) {
+            //     System.out.println("Possible silent detection");
+            // } else {
+            //     System.out.println("Max buffer "+ dBVectorData.size());
+
+            // }
+            creteUtterance();
+            
+        } 
+        
 
     }
 
@@ -567,7 +574,6 @@ public class AudioSegmentor {
     }
 
     public void creteUtterance() {
-
         int n = 0;
         ArrayList<Integer> silentDuration = new ArrayList<>();
         ArrayList<Integer> silentIndex = new ArrayList<>();
@@ -659,9 +665,11 @@ public class AudioSegmentor {
         }
 
         if (RUNNING_SILENT >= STOP_RUNNING_SILENT) {
+            // selama silent tidak lebih kecil dari interval batas bawah silent, maka masih dimungkin ada deteksi
             RUNNING_SILENT--;
         } else if (!isChange) {
             countSegmentation++;
+            // jika tidak terjadi perubahan volume suara selama 3 detik, maka latih ulang
             if (countSegmentation == (((int) (this.audioFormat.getSampleRate() * this.audioFormat.getSampleSizeInBits()
                     / 8)) * 3)) {
 
