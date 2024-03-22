@@ -387,11 +387,14 @@ public class AudioSegmentor {
     }
 
     public void stopAudio() {
-
+        System.out.println("size "+dBVectorData.size()); 
+        
         if (dBVectorData.size() > 25) {
             // create utterance last meeting, if 12800 bytes
             // System.out.println("MASUK");
             creteLastUtterance();
+        } else{
+           System.out.println("size "+dBVectorData.size()); 
         }
 
         this.dBVectorFlag.removeAll(dBVectorFlag);

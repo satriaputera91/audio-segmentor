@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -26,6 +27,25 @@ public class AudioProcessing {
 
     private AudioSegmentorHandler handler;
     private Map<Integer, AudioSegmentor> segmentors;
+    
+
+    public byte[] audioPadding(byte[] audio){
+        int pad = 6400;
+        int size = audio.length;
+        if ( size < pad){
+            ByteBuffer buffer = ByteBuffer.allocate(pad);
+            buffer.put(audio);
+            System.out.println( "bytes is lacking, size : "+(pad - size));
+        
+            for(int i = 0; i < pad - size; i++){
+             
+                buffer.put((byte)0);
+            }
+            return buffer.array();
+        }
+
+        return audio;
+    }
 
     public AudioProcessing(AudioSegmentorHandler handler) {
 
@@ -58,6 +78,8 @@ public class AudioProcessing {
 
                 ByteArrayOutputStream leftbaos = new ByteArrayOutputStream();
                 ByteArrayOutputStream rightbaos = new ByteArrayOutputStream();
+                boolean detectionZero = true;
+                int detectMinBytes = 0;
                 //System.out.println("size : "+bytes.length);
                 while (audioInputStream.read(bytes) != -1) {
 
@@ -71,21 +93,23 @@ public class AudioProcessing {
                             segmentor.set_channel(channel_potition);
 
                             this.segmentors.put(channel_potition, segmentor);
-
+                            detectionZero = false;
                         }
 
                         if (channel_potition == 1) {
                             leftbaos.write(bytes, 0, bytes.length / channels);
 
                             if (leftbaos.size() >= AudioSegmentor.MAX_BUFFER) {
-
+                                detectMinBytes = detectMinBytes + leftbaos.size();
                                 this.segmentors.get(channel_potition).segmentation(leftbaos.toByteArray());
                                 leftbaos.reset();
+
                             }
                         } else if (channel_potition == 2) {
                             rightbaos.write(bytes, bytes.length / channels, bytes.length / channels);
 
                             if (rightbaos.size() >= AudioSegmentor.MAX_BUFFER) {
+                                detectMinBytes = detectMinBytes + leftbaos.size();                              
                                 this.segmentors.get(channel_potition).segmentation(rightbaos.toByteArray());
                                 rightbaos.reset();
                             }
@@ -99,21 +123,38 @@ public class AudioProcessing {
                 while (channel_potition < audioInputStream.getFormat().getChannels() + 1) {
 
                     if (channel_potition == 1) {
-                        if (leftbaos.size() > 0) {
-                            this.segmentors.get(channel_potition).segmentation(leftbaos.toByteArray());
-                            leftbaos.reset();
-                        }
-                        this.segmentors.get(channel_potition).stopAudio();
+                                                                         
+                        if (detectionZero || detectMinBytes <= 6400) {
+
+                           System.out.println("DetectZero :"+ detectionZero+", or minimum bytes :"+ detectMinBytes);
+                           byte[] leftPadBytes = audioPadding(leftbaos.toByteArray());
+                           this.handler.onUtterance(leftPadBytes, channel_potition, 0,0 );
+                           leftbaos.reset();                             
                         
+                        }  else{
+                            if (leftbaos.size() > 0) {
+                                this.segmentors.get(channel_potition).segmentation(leftbaos.toByteArray());
+                                leftbaos.reset(); 
+                            }
+                            this.segmentors.get(channel_potition).stopAudio();                            
+                        }  
 
                     } else if (channel_potition == 2) {
 
-                        if (rightbaos.size() >= 0) {
-                            this.segmentors.get(channel_potition).segmentation(rightbaos.toByteArray());
+                        if (detectionZero || detectMinBytes <= 6400) {
+                            System.out.println("DetectZero :"+ detectionZero+", or minimum bytes :"+ detectMinBytes);
+                            byte[] rightPadBytes = audioPadding(rightbaos.toByteArray());                           
+                            this.handler.onUtterance(rightPadBytes, channel_potition, 0,0 );
                             rightbaos.reset();
-                        }
-                        this.segmentors.get(channel_potition).stopAudio();
+                            
+                        } else {
+                            if (rightbaos.size() > 0) {
+                                this.segmentors.get(channel_potition).segmentation(rightbaos.toByteArray());
+                                rightbaos.reset();
+                            }
 
+                            this.segmentors.get(channel_potition).stopAudio();
+                        }
                     }
 
                     channel_potition++;
